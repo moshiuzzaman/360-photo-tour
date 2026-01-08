@@ -8,8 +8,6 @@ import "@photo-sphere-viewer/map-plugin/index.css";
 
 const baseUrl = "https://photo-sphere-viewer-data.netlify.app/assets/";
 
-// --- 1. ROOM CONFIGURATION MAPPING ---
-// Helper function to convert degrees to radians (Photo Sphere Viewer uses radians)
 function degToRad(degrees) {
     return (degrees * Math.PI) / 180;
 }
@@ -25,44 +23,33 @@ const MAP_IMAGE_HEIGHT = 1200;
 const MAP_CENTER_X = MAP_IMAGE_WIDTH / 2;
 const MAP_CENTER_Y = MAP_IMAGE_HEIGHT / 2;
 
-// Hotspot pixel coordinates on the map image
-// Converted from polar coordinates (yaw, distance) to cartesian (x, y)
-// Formula: x = centerX + distance * cos(yaw), y = centerY - distance * sin(yaw)
 const hotspotCoords = {
     room1: {
-        x: MAP_CENTER_X + 140 * Math.cos(degToRad(45)),
-        y: MAP_CENTER_Y - 140 * Math.sin(degToRad(45)),
         tooltip: "Room 1",
         color: "blue",
     },
     room2: {
-        x: MAP_CENTER_X + 140 * Math.cos(degToRad(-45)),
-        y: MAP_CENTER_Y - 140 * Math.sin(degToRad(-45)),
         tooltip: "Room 2",
         color: "red",
     },
     room3: {
-        x: MAP_CENTER_X + 140 * Math.cos(degToRad(180)),
-        y: MAP_CENTER_Y - 140 * Math.sin(degToRad(180)),
         tooltip: "Room 3",
         color: "green",
     },
 };
 
-// Store the original yaw angles that correspond to hotspot positions
-// These are the angles from the map center to each hotspot
 const roomConfig = {
     room1: {
         panorama: "/room1.jpg",
-        yaw: degToRad(45), // Original yaw for Room 1 hotspot
+        yaw: degToRad(45),
     },
     room2: {
         panorama: "/room2.jpg",
-        yaw: degToRad(-45), // Original yaw for Room 2 hotspot
+        yaw: degToRad(-45),
     },
     room3: {
         panorama: "/room3.jpg",
-        yaw: degToRad(180), // Original yaw for Room 3 hotspot
+        yaw: degToRad(180),
     },
 };
 
@@ -83,12 +70,10 @@ function initApp() {
                 minZoom: 40,
                 maxZoom: 40,
                 shape: "square",
-                // Static map: prevents rotation, only hotspot indicators move
+
                 static: true,
                 hotspots: [
                     {
-                        // Use polar coordinates (yaw + distance) so pin aligns correctly
-                        // When viewer yaw matches hotspot yaw, pin will be at hotspot position
                         yaw: "45deg",
                         distance: 140, // pixels from center
                         tooltip: hotspotCoords.room1.tooltip,
@@ -111,26 +96,13 @@ function initApp() {
         ],
     });
 
-    // --- 3. GET MAPPLUGIN REFERENCE ---
-    const mapPlugin = viewer.getPlugin(MapPlugin);
-
     // --- 4. BUTTON HANDLERS ---
     function switchToRoom(roomId) {
         const config = roomConfig[roomId];
         if (!config) return;
 
         // Switch panorama and rotate to hotspot yaw
-        viewer.setPanorama(config.panorama).then(() => {
-            // Wait a bit for panorama to fully render
-            setTimeout(() => {
-                //    get map plugin reference
-                const mapPlugin = viewer.getPlugin(MapPlugin);
-                //    get hotspot coordinates
-                const hotspot = hotspotCoords[roomId];
-                //    rotate viewer to hotspot yaw
-                mapPlugin.setCenter(hotspot.x, hotspot.y);
-            }, 100);
-        });
+        viewer.setPanorama(config.panorama).then(() => {});
     }
 
     document.getElementById("btn-1").addEventListener("click", () => {
