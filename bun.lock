@@ -7,6 +7,7 @@
       "dependencies": {
         "@photo-sphere-viewer/core": "^5.14.0",
         "@photo-sphere-viewer/equirectangular-tiles-adapter": "^5.14.0",
+        "@photo-sphere-viewer/map-plugin": "^5.14.0",
         "@photo-sphere-viewer/virtual-tour-plugin": "^5.14.0",
       },
       "devDependencies": {
@@ -70,6 +71,8 @@
     "@photo-sphere-viewer/core": ["@photo-sphere-viewer/core@5.14.0", "", { "dependencies": { "three": "^0.179.0" } }, "sha512-V0JeDSB1D2Q60Zqn7+0FPjq8gqbKEwuxMzNdTLydefkQugVztLvdZykO+4k5XTpweZ2QAWPH/QOI1xZbsdvR9A=="],
 
     "@photo-sphere-viewer/equirectangular-tiles-adapter": ["@photo-sphere-viewer/equirectangular-tiles-adapter@5.14.0", "", { "peerDependencies": { "@photo-sphere-viewer/core": "5.14.0" } }, "sha512-PEZreZg79tdkYbiswKppmLuwkJnMnhLVHTHJdWYqpjFt6PJ/ieh7Eg/8fIACc+DPtFrgzyCcH/6QAHPUE9nblQ=="],
+
+    "@photo-sphere-viewer/map-plugin": ["@photo-sphere-viewer/map-plugin@5.14.0", "", { "peerDependencies": { "@photo-sphere-viewer/core": "5.14.0" } }, "sha512-o6gUjpZtST7dxyWqDUBS3p0DiK9zCy341/2cPB10exsYsCrfCKz1G1mWZnjQTVV2Uo24Q4ZdB6QOU/adgJ0sjQ=="],
 
     "@photo-sphere-viewer/virtual-tour-plugin": ["@photo-sphere-viewer/virtual-tour-plugin@5.14.0", "", { "peerDependencies": { "@photo-sphere-viewer/core": "5.14.0" } }, "sha512-jpaAYaF3p2m/UeDLlZPOWnKspcl2FoEXlTKwDnfSIXr+jxU4hoWFeHUH7Y2htvGCxqPh2gNY1DSLsczK4Qf6Vg=="],
 
