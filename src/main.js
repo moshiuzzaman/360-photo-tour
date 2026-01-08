@@ -1,141 +1,148 @@
 import "./style.css";
 import { Viewer } from "@photo-sphere-viewer/core";
-import { VirtualTourPlugin } from "@photo-sphere-viewer/virtual-tour-plugin";
+
+import { MapPlugin } from "@photo-sphere-viewer/map-plugin";
 import "@photo-sphere-viewer/core/index.css";
 import "@photo-sphere-viewer/virtual-tour-plugin/index.css";
+import "@photo-sphere-viewer/map-plugin/index.css";
 
-// --- 1. CONFIGURATION ---
-const imageUrls = {
-    room1: "/room1.jpg",
-    room2: "/room2.jpg",
-    room3: "/room3.jpg",
-};
+const baseUrl = "https://photo-sphere-viewer-data.netlify.app/assets/";
 
-// --- 2. THE SECRET SAUCE: BLOB PRELOADING ---
-// This function downloads the image and creates a local memory link (Blob URL)
-async function loadAsBlob(url) {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
+// --- 1. ROOM CONFIGURATION MAPPING ---
+// Helper function to convert degrees to radians (Photo Sphere Viewer uses radians)
+function degToRad(degrees) {
+    return (degrees * Math.PI) / 180;
 }
 
-// We wrap everything in an async function to wait for downloads
-async function initApp() {
-    // Download all images into RAM before starting
-    // This might take 1-2 seconds on startup, but switching will be INSTANT later.
-    const [blob1, blob2, blob3] = await Promise.all([
-        loadAsBlob(imageUrls.room1),
-        loadAsBlob(imageUrls.room2),
-        loadAsBlob(imageUrls.room3),
-    ]);
+// Helper function to convert radians to degrees
+function radToDeg(radians) {
+    return (radians * 180) / Math.PI;
+}
 
-    // --- 3. DEFINE NODES WITH BLOB URLS ---
-    const nodes = [
-        {
-            id: "room1",
-            panorama: blob1, // Use the memory blob, not the file path
-            name: "Room 1",
-            links: [],
-        },
-        {
-            id: "room2",
-            panorama: blob2,
-            name: "Room 2",
-            links: [],
-        },
-        {
-            id: "room3",
-            panorama: blob3,
-            name: "Room 3",
-            links: [],
-        },
-    ];
+// Map image dimensions (adjust based on actual map.jpg size)
+const MAP_IMAGE_WIDTH = 1600;
+const MAP_IMAGE_HEIGHT = 1200;
+const MAP_CENTER_X = MAP_IMAGE_WIDTH / 2;
+const MAP_CENTER_Y = MAP_IMAGE_HEIGHT / 2;
 
-    // --- 4. INITIALIZE VIEWER ---
+// Hotspot pixel coordinates on the map image
+// Converted from polar coordinates (yaw, distance) to cartesian (x, y)
+// Formula: x = centerX + distance * cos(yaw), y = centerY - distance * sin(yaw)
+const hotspotCoords = {
+    room1: {
+        x: MAP_CENTER_X + 140 * Math.cos(degToRad(45)),
+        y: MAP_CENTER_Y - 140 * Math.sin(degToRad(45)),
+        tooltip: "Room 1",
+        color: "blue",
+    },
+    room2: {
+        x: MAP_CENTER_X + 140 * Math.cos(degToRad(-45)),
+        y: MAP_CENTER_Y - 140 * Math.sin(degToRad(-45)),
+        tooltip: "Room 2",
+        color: "red",
+    },
+    room3: {
+        x: MAP_CENTER_X + 140 * Math.cos(degToRad(180)),
+        y: MAP_CENTER_Y - 140 * Math.sin(degToRad(180)),
+        tooltip: "Room 3",
+        color: "green",
+    },
+};
+
+// Store the original yaw angles that correspond to hotspot positions
+// These are the angles from the map center to each hotspot
+const roomConfig = {
+    room1: {
+        panorama: "/room1.jpg",
+        yaw: degToRad(45), // Original yaw for Room 1 hotspot
+    },
+    room2: {
+        panorama: "/room2.jpg",
+        yaw: degToRad(-45), // Original yaw for Room 2 hotspot
+    },
+    room3: {
+        panorama: "/room3.jpg",
+        yaw: degToRad(180), // Original yaw for Room 3 hotspot
+    },
+};
+
+// --- 2. INITIALIZE VIEWER ---
+function initApp() {
     const viewer = new Viewer({
         container: document.querySelector("#viewer"),
-        navbar: false,
-        defaultZoomLvl: 50,
+        panorama: "/room1.jpg",
+        defaultYaw: roomConfig.room1.yaw, // Start facing Room 1 hotspot direction
         plugins: [
-            [
-                VirtualTourPlugin,
-                {
-                    positionMode: "manual",
-                    renderMode: "3d",
-                    startNodeId: "room1",
-                    preload: true,
-                    nodes: nodes, // Pass our RAM-loaded nodes
-                },
-            ],
+            MapPlugin.withConfig({
+                imageUrl: baseUrl + "map.jpg",
+                // Center on the geometric center of the map image for balanced fitting
+                center: { x: MAP_CENTER_X, y: MAP_CENTER_Y },
+                rotation: "0deg",
+                // Zoom constraints to prevent panning (forces entire image into container)
+                defaultZoom: 40,
+                minZoom: 40,
+                maxZoom: 40,
+                shape: "square",
+                // Static map: prevents rotation, only hotspot indicators move
+                static: true,
+                hotspots: [
+                    {
+                        // Use polar coordinates (yaw + distance) so pin aligns correctly
+                        // When viewer yaw matches hotspot yaw, pin will be at hotspot position
+                        yaw: "45deg",
+                        distance: 140, // pixels from center
+                        tooltip: hotspotCoords.room1.tooltip,
+                        color: hotspotCoords.room1.color,
+                    },
+                    {
+                        yaw: "-45deg",
+                        distance: 140,
+                        tooltip: hotspotCoords.room2.tooltip,
+                        color: hotspotCoords.room2.color,
+                    },
+                    {
+                        yaw: "180deg",
+                        distance: 140,
+                        tooltip: hotspotCoords.room3.tooltip,
+                        color: hotspotCoords.room3.color,
+                    },
+                ],
+            }),
         ],
     });
 
-    const virtualTour = viewer.getPlugin(VirtualTourPlugin);
+    // --- 3. GET MAPPLUGIN REFERENCE ---
+    const mapPlugin = viewer.getPlugin(MapPlugin);
 
-    // --- 5. PRELOAD ALL PANORAMA TEXTURES INTO GPU MEMORY ---
-    // Wait for viewer to be ready before preloading other textures
-    // This eliminates loading screens when switching panoramas
-    viewer.addEventListener("ready", () => {
-        async function preloadRemainingTextures() {
-            try {
-                // Only preload textures that aren't currently loaded (room1 is already loaded)
-                // Preload in sequence to avoid conflicts
-                await viewer.textureLoader.preloadPanorama(blob2);
-                await viewer.textureLoader.preloadPanorama(blob3);
-                console.log("All panorama textures preloaded successfully");
-            } catch (error) {
-                // Ignore abort errors - they happen if panorama is already loading
-                if (error.name !== "AbortError") {
-                    console.warn("Error preloading some textures:", error);
-                }
-            }
-        }
+    // --- 4. BUTTON HANDLERS ---
+    function switchToRoom(roomId) {
+        const config = roomConfig[roomId];
+        if (!config) return;
 
-        // Preload remaining textures after initial panorama is loaded
-        preloadRemainingTextures();
-    });
-
-    // --- 6. BUTTON LOGIC WITH INSTANT TRANSITIONS ---
-    // Helper function to switch nodes with smooth fade transition
-    async function switchToNode(nodeId, blobUrl) {
-        const viewerContainer = document.querySelector("#viewer");
-        const currentNodeId = virtualTour.getCurrentNode()?.id;
-
-        // Don't switch if already on this node
-        if (currentNodeId === nodeId) return;
-
-        // Ensure texture is preloaded before switching
-        try {
-            await viewer.textureLoader.preloadPanorama(blobUrl);
-        } catch (error) {
-            // Ignore abort errors - texture might already be loading
-            if (error.name !== "AbortError") {
-                console.warn(`Error preloading ${nodeId}:`, error);
-            }
-        }
-
-        // Switch to the node (texture should be preloaded, so this is instant)
-        virtualTour.setCurrentNode(nodeId);
+        // Switch panorama and rotate to hotspot yaw
+        viewer.setPanorama(config.panorama).then(() => {
+            // Wait a bit for panorama to fully render
+            setTimeout(() => {
+                //    get map plugin reference
+                const mapPlugin = viewer.getPlugin(MapPlugin);
+                //    get hotspot coordinates
+                const hotspot = hotspotCoords[roomId];
+                //    rotate viewer to hotspot yaw
+                mapPlugin.setCenter(hotspot.x, hotspot.y);
+            }, 100);
+        });
     }
 
-    // Map node IDs to their blob URLs for quick lookup
-    const nodeBlobMap = {
-        room1: blob1,
-        room2: blob2,
-        room3: blob3,
-    };
-
-    // Set up button handlers for instant transitions
     document.getElementById("btn-1").addEventListener("click", () => {
-        switchToNode("room1", nodeBlobMap.room1);
+        switchToRoom("room1");
     });
 
     document.getElementById("btn-2").addEventListener("click", () => {
-        switchToNode("room2", nodeBlobMap.room2);
+        switchToRoom("room2");
     });
 
     document.getElementById("btn-3").addEventListener("click", () => {
-        switchToNode("room3", nodeBlobMap.room3);
+        switchToRoom("room3");
     });
 }
 
